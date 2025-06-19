@@ -1,0 +1,181 @@
+version: '3.8'
+
+services:
+  # ==================== HADOOP CLUSTER ====================
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    hostname: namenode
+    ports:
+      - "9870:9870"  # HDFS Web UI
+      - "9000:9000"  # HDFS
+    environment:
+      - CLUSTER_NAME=lakehouse
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - CORE_CONF_hadoop_http_staticuser_user=root
+      - HDFS_CONF_dfs_namenode_name_dir=/hadoop/dfs/name
+      - HDFS_CONF_dfs_replication=1
+      - HDFS_CONF_dfs_permissions_enabled=false
+    volumes:
+      - namenode_data:/hadoop/dfs/name
+    networks:
+      - lakehouse
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    hostname: datanode
+    ports:
+      - "9864:9864"  # DataNode Web UI
+    environment:
+      - SERVICE_PRECONDITION=namenode:9870
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - HDFS_CONF_dfs_datanode_data_dir=/hadoop/dfs/data
+      - HDFS_CONF_dfs_replication=1
+      - HDFS_CONF_dfs_permissions_enabled=false
+    volumes:
+      - datanode_data:/hadoop/dfs/data
+    depends_on:
+      - namenode
+    networks:
+      - lakehouse
+
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    hostname: resourcemanager
+    ports:
+      - "8088:8088"  # Yarn Web UI
+    environment:
+      - SERVICE_PRECONDITION=namenode:9000 namenode:9870 datanode:9864
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - YARN_CONF_yarn_nodemanager_resource_memory___mb=6144
+      - YARN_CONF_yarn_scheduler_maximum___allocation___mb=6144
+      - YARN_CONF_yarn_nodemanager_aux___services=mapreduce_shuffle
+    volumes: []
+    depends_on:
+      - namenode
+      - datanode
+    networks:
+      - lakehouse
+
+  nodemanager:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager
+    hostname: nodemanager
+    ports:
+      - "8042:8042"  # NodeManager Web UI
+    environment:
+      - SERVICE_PRECONDITION=namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - YARN_CONF_yarn_nodemanager_resource_memory___mb=6144
+      - YARN_CONF_yarn_scheduler_maximum___allocation___mb=6144
+      - YARN_CONF_yarn_nodemanager_aux___services=mapreduce_shuffle
+    volumes: []
+    depends_on:
+      - resourcemanager
+    networks:
+      - lakehouse
+
+  # ==================== SPARK CLUSTER ====================
+  spark-master:
+    image: apache/spark:3.4.0
+    container_name: spark-master
+    hostname: spark-master
+    ports:
+      - "8080:8080"  # Spark Master Web UI
+      - "7077:7077"  # Spark Master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+    volumes:
+      - ./spark/spark-config:/opt/spark/conf
+      - spark_logs:/opt/spark/logs
+      - ../src:/opt/spark/work/src  # Code du projet
+    networks:
+      - lakehouse
+
+  spark-worker:
+    image: apache/spark:3.4.0
+    container_name: spark-worker
+    hostname: spark-worker
+    ports:
+      - "8081:8081"  # Spark Worker Web UI
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=4g
+      - SPARK_WORKER_CORES=4
+    volumes:
+      - ./spark/spark-config:/opt/spark/conf
+      - spark_logs:/opt/spark/logs
+      - ../src:/opt/spark/work/src  # Code du projet
+    depends_on:
+      - spark-master
+    networks:
+      - lakehouse
+
+  # ==================== HIVE (avec MySQL externe) ====================
+  hive-metastore:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: hive-metastore
+    hostname: hive-metastore
+    ports:
+      - "9083:9083"  # Hive Metastore
+    environment:
+      - SERVICE_PRECONDITION=namenode:9870 datanode:9864
+      - SERVICE_NAME=metastore
+      - DB_DRIVER=mysql
+    env_file:
+      - .env
+    volumes:
+      - ./hive/hive-config:/opt/hive/conf
+    depends_on:
+      - namenode
+      - datanode
+    networks:
+      - lakehouse
+
+  hiveserver2:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: hiveserver2
+    hostname: hiveserver2
+    ports:
+      - "10000:10000"  # HiveServer2
+      - "10002:10002"  # HiveServer2 Web UI
+    environment:
+      - SERVICE_PRECONDITION=hive-metastore:9083
+      - SERVICE_NAME=hiveserver2
+    env_file:
+      - .env
+    volumes:
+      - ./hive/hive-config:/opt/hive/conf
+    depends_on:
+      - hive-metastore
+    networks:
+      - lakehouse
+
+  # ==================== MLFLOW (avec MySQL externe) ====================
+  mlflow:
+    build: ./mlflow
+    container_name: mlflow
+    hostname: mlflow
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+      - ../src:/mlflow/work/src  # Code du projet
+    networks:
+      - lakehouse
+
+volumes:
+  namenode_data:
+  datanode_data:
+  mlflow_artifacts:
+  spark_logs:
+
+networks:
+  lakehouse:
+    driver: bridge
