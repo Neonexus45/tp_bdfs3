@@ -91,7 +91,6 @@ import time
 import uvicorn
 
 from .routers import accidents, hotspots, kpis, predictions, health
-from .middleware.authentication import AuthenticationMiddleware
 from .middleware.rate_limiting import RateLimitMiddleware
 from config.config_manager import ConfigManager
 
@@ -117,7 +116,7 @@ app = FastAPI(
     
     ## Authentification
     
-    L'API utilise l'authentification JWT. Obtenez un token via `/auth/login`.
+    L'API est accessible sans authentification (version projet scolaire).
     
     ## Pagination
     
@@ -267,7 +266,6 @@ from ..models.request_models import AccidentFilters, PaginationParams
 from ..models.response_models import AccidentResponse, AccidentListResponse
 from ..services.accident_service import AccidentService
 from ..dependencies.database import get_db_session
-from ..dependencies.authentication import get_current_user
 
 router = APIRouter()
 

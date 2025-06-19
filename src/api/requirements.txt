@@ -1,0 +1,36 @@
+# FastAPI et serveur ASGI
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Base de données
+sqlalchemy==2.0.23
+pymysql==1.1.0
+cryptography==41.0.7
+
+# Modèles et validation
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# HTTP client pour tests
+httpx==0.25.2
+
+# Utilitaires
+python-multipart==0.0.6
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Logging et monitoring
+structlog==23.2.0
+
+# ML et prédictions (optionnel)
+scikit-learn==1.3.2
+pandas==2.1.4
+numpy==1.24.4
+
+# Configuration
+pyyaml==6.0.1
+python-dotenv==1.0.0
+
+# Tests
+pytest==7.4.3
+pytest-asyncio==0.21.1

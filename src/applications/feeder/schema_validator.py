@@ -234,11 +234,15 @@ class SchemaValidator:
         except Exception:
             return 0.0
     
-    def _combine_validation_results(self, base_result: Dict[str, Any], 
+    def _combine_validation_results(self, base_result: Dict[str, Any],
                                   extended_result: Dict[str, Any]) -> Dict[str, Any]:
         """Combine les résultats de validation de base et étendue"""
         try:
             combined_result = base_result.copy()
+            
+            # Ensure is_valid key exists
+            if 'is_valid' not in combined_result:
+                combined_result['is_valid'] = True
             
             # Ajout des résultats étendus
             if 'error' not in extended_result:

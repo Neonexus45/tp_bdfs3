@@ -101,7 +101,6 @@ lakehouse_accidents_us/
 │   │   │
 │   │   └── middleware/              # Middlewares
 │   │       ├── __init__.py
-│   │       ├── authentication.py   # Authentification
 │   │       ├── rate_limiting.py    # Limitation de débit
 │   │       └── cors.py             # Configuration CORS
 │   │

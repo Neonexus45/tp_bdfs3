@@ -148,44 +148,60 @@ class FeederApp:
         """Exécute le pipeline d'ingestion principal"""
         try:
             # Étape 1: Lecture des données
+            self.logger.info("Starting stage: Data Reading")
             self.logger.log_spark_job("feeder_pipeline", "data_reading_start")
             raw_df = self.data_ingestion.read_csv_data(self.source_path)
             self.execution_metrics['records_read'] = raw_df.count()
+            self.logger.info("Completed stage: Data Reading")
             
             # Étape 2: Validation du schéma
+            self.logger.info("Starting stage: Schema Validation")
             self.logger.log_spark_job("feeder_pipeline", "schema_validation_start")
             schema_result = self.schema_validator.validate_dataframe_schema(raw_df)
             
-            if not schema_result['is_valid']:
+            # Access the validation result from the nested structure
+            validation_result = schema_result.get('schema_validation', schema_result)
+            if not validation_result.get('is_valid', True):
                 raise DataValidationError(
                     message="Schema validation failed",
                     validation_type="schema",
-                    failed_rules=schema_result.get('issues', []),
+                    failed_rules=validation_result.get('issues', []),
                     dataset="us_accidents"
                 )
+            self.logger.info("Completed stage: Schema Validation")
             
             # Étape 3: Contrôle qualité
+            self.logger.info("Starting stage: Quality Check")
             self.logger.log_spark_job("feeder_pipeline", "quality_check_start")
             quality_result = self.quality_checker.check_data_quality(raw_df)
             self.execution_metrics['quality_score'] = quality_result.get('quality_score', 0.0)
+            self.logger.info("Completed stage: Quality Check")
             
             # Étape 4: Nettoyage et préparation
+            self.logger.info("Starting stage: Data Preparation")
             self.logger.log_spark_job("feeder_pipeline", "data_preparation_start")
             cleaned_df = self.quality_checker.clean_corrupted_data(raw_df)
+            self.logger.info("Completed stage: Data Preparation")
             
             # Étape 5: Optimisation et cache
+            self.logger.info("Starting stage: Optimization")
             self.logger.log_spark_job("feeder_pipeline", "optimization_start")
             optimized_df = self._optimize_dataframe(cleaned_df)
+            self.logger.info("Completed stage: Optimization")
             
             # Étape 6: Partitioning et écriture
+            self.logger.info("Starting stage: Partitioning")
             self.logger.log_spark_job("feeder_pipeline", "partitioning_start")
             partitioned_df = self.partitioning_strategy.apply_partitioning(optimized_df)
+            self.logger.info("Completed stage: Partitioning")
             
             # Étape 7: Écriture finale
+            self.logger.info("Starting stage: Writing")
             self.logger.log_spark_job("feeder_pipeline", "writing_start")
             write_result = self._write_to_bronze_layer(partitioned_df)
             self.execution_metrics['records_written'] = write_result['records_written']
             self.execution_metrics['partitions_created'] = write_result['partitions_created']
+            self.logger.info("Completed stage: Writing")
             
             # Métriques finales
             self._calculate_final_metrics()

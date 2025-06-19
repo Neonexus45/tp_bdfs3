@@ -225,9 +225,7 @@ GENERATOR_SIMULATION_SPEED=1.0
 # -----------------------------------------------------------------------------
 # Configuration Sécurité
 # -----------------------------------------------------------------------------
-SECURITY_ENABLED=true
-JWT_SECRET_KEY=your-jwt-secret-key
-JWT_ALGORITHM=HS256
+SECURITY_ENABLED=false
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 # -----------------------------------------------------------------------------
@@ -515,7 +513,6 @@ class DatabaseConfig:
 # config/secrets/dev_secrets.env
 MYSQL_PASSWORD=dev_password
 API_SECRET_KEY=dev-secret-key-not-for-production
-JWT_SECRET_KEY=dev-jwt-secret
 
 # config/secrets/prod_secrets.env
 MYSQL_PASSWORD=${VAULT_MYSQL_PASSWORD}
