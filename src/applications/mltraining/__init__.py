@@ -1,0 +1,3 @@
+"""
+Application d'entraînement ML
+"""
